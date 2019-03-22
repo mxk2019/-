@@ -1,0 +1,164 @@
+---
+title: "week5"
+author: "馬孝鎧"
+date: "2019年3月22日"
+output: html_document
+---
+#马孝铠作业
+##载入数据
+```{r message=FALSE}
+library(dplyr)
+library(data.table)
+library(ggplot2)
+library(readr)
+
+X201801 <- read_csv("201801_data.csv") 
+X201802 <- read_csv("201802_data.csv") 
+X201803 <- read_csv("201803_data.csv") 
+X201804 <- read_csv("201804_data.csv") 
+X201805 <- read_csv("201805_data.csv") 
+X201806 <- read_csv("201806_data.csv") 
+X201807 <- read_csv("201807_data.csv") 
+X201808 <- read_csv("201808_data.csv") 
+X201809 <- read_csv("201809_data.csv") 
+X201810 <- read_csv("201810_data.csv") 
+X201811 <- read_csv("201811_data.csv") 
+X201812 <- read_csv("201812_data.csv") 
+X201901 <- read_csv("201901_data.csv") 
+```
+##整合2018年1月到2019年1月的數據
+```{r}
+all13=rbind(X201801,X201802,X201803,X201804,X201805,X201806,X201807,X201808,X201809,X201810,X201811,X201812,X201901)
+```
+#整理并筛选台北候选人发文数据
+###柯文哲发文数据
+```{r}
+kwz=filter(all13,grepl("柯文哲",all13$Page_Name)==T
+           &grepl("北美柯文哲粉絲團",all13$Page_Name)==F
+           &grepl("柯文哲市長的543",all13$Page_Name)==F
+           &grepl("柯文哲有病",all13$Page_Name)==F
+           &grepl("狗王廟提告柯文哲 妨害自由罪 傷害罪證據",all13$Page_Name)==F
+           &grepl("白色力量-柯文哲",all13$Page_Name)==F
+           &grepl("柯文哲的玫瑰鋼鐵聖騎士團",all13$Page_Name)==F
+           &grepl("柯文哲女性後援會粉絲團",all13$Page_Name)==F
+           &grepl("台北市長挺柯文哲 大安文山挺張凱鈞",all13$Page_Name)==F
+           &grepl("白色力量柯文哲，大安文山張凱鈞",all13$Page_Name)==F)
+```
+###丁守中发文数据
+```{r}
+dsz=filter(all13,grepl("丁守中",all13$Page_Name
+)==T)
+```
+###两人合并数据
+```{r}
+both=rbind(dsz,kwz)
+```
+#时间处理
+```{r}
+dsz$Date=as.POSIXct(dsz$Date,format="%Y/%m/%d %H:%M:%S")
+kwz$Date=as.POSIXct(kwz$Date,format="%Y/%m/%d %H:%M:%S")
+both$Date=as.POSIXct(both$Date,format="%Y/%m/%d %H:%M:%S")
+```
+
+#po文类型统计（饼图）
+###柯文哲
+```{r}
+kwztype=kwz%>%group_by(Type)%>%count()
+label_value <- paste('(', round(kwztype$n/sum(kwztype$n) * 100, 1), '%)', sep = '')
+label=paste(kwztype$Type,label_value,sep = "")
+ggplot(kwztype, aes(x="", y=n, fill=Type)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0)+
+  labs(x = '', y = '', title = '')+
+  theme(axis.text = element_blank())+
+  scale_fill_discrete(labels = label)
+```
+
+##丁守中
+```{r}
+dsztype=dsz%>%group_by(Type)%>%count()
+label_value <- paste('(', round(dsztype$n/sum(dsztype$n) * 100, 1), '%)', sep = '')
+label=paste(dsztype$Type,label_value,sep = "")
+ggplot(dsztype, aes(x="", y=n, fill=Type)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0)+
+  labs(x = '', y = '', title = '')+
+  theme(axis.text = element_blank())+
+  scale_fill_discrete(labels = label)
+```
+
+#从2018年1月到2019年1月的po文变化（直方图）
+###柯文哲
+```{r}
+kwzcount=kwz%>%group_by(month=format(Date,"%Y/%m"))%>%count()
+ggplot(kwzcount,aes(x=month,y=n))+
+  geom_bar(stat = "identity")
+```
+
+###丁守中
+```{r}
+dszcount=dsz%>%group_by(month=format(Date,"%Y/%m"))%>%count()
+ggplot(dszcount,aes(x=month,y=n))+
+  geom_bar(stat = "identity")
+```
+
+###柯文哲和丁守中对比变化
+```{r}
+kwzcount=kwz%>%group_by(month=format(Date,"%m"))%>%count()%>%mutate(group="ke")
+dszcount=dsz%>%group_by(month=format(Date,"%m"))%>%count()%>%mutate(group="ding")
+monthcount=rbind(kwzcount,dszcount)%>%arrange((month))
+
+ggplot(monthcount,aes(x=month,y=n,fill=group))+
+  geom_bar(stat="identity",position = "dodge")
+```
+
+#对比发文数据类型分布（箱线图）
+###柯文哲
+
+```{r}
+ggplot(kwz,aes(x=Type,y=Share_Count))+
+  geom_boxplot()
+```
+
+###丁守中
+```{r}
+ggplot(dsz,aes(x=Type,y=Share_Count))+
+  geom_boxplot()
+```
+
+#常态分布
+###柯文哲
+```{r}
+library(ggpubr)
+ggqqplot(kwz$All_Reaction_Count)
+```
+
+###丁守中
+```{r}
+ggqqplot(dsz$All_Reaction_Count)
+```
+
+#观察是否有离群值，是否为常态分布
+###柯文哲
+```{r}
+library(corrplot)
+cor(kwz[c(6:14)])%>%corrplot.mixed(lower = "pie",tl.cex=0.6)
+```
+
+###丁守中
+```{r}
+cor(dsz[c(6:14)])%>%corrplot.mixed(lower = "pie",tl.cex=0.6)
+```
+
+#挑出相关中相关系数较显著的，观察其图型
+###柯文哲
+```{r}
+ggscatter(kwz,x="All_Reaction_Count",y="LOVE_COUNT", add = "reg.line", conf.int = TRUE,cor.coef = TRUE, cor.method = "pearson")
+
+```
+
+###丁守中
+```{r}
+ggscatter(dsz,x="Comment_Count",y="LOVE_COUNT", add = "reg.line", conf.int = TRUE,cor.coef = TRUE, cor.method = "pearson")
+```
+
